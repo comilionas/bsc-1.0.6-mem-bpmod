@@ -18,6 +18,7 @@ package types
 
 import (
 	"container/heap"
+	"encoding/json"
 	"errors"
 	"io"
 	"math/big"
@@ -172,6 +173,7 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 	return nil
 }
 
+func (tx *Transaction) From() atomic.Value { return tx.from }
 func (tx *Transaction) Data() []byte       { return common.CopyBytes(tx.data.Payload) }
 func (tx *Transaction) Gas() uint64        { return tx.data.GasLimit }
 func (tx *Transaction) GasPrice() *big.Int { return new(big.Int).Set(tx.data.Price) }
@@ -230,6 +232,22 @@ func (tx *Transaction) AsMessage(s Signer) (Message, error) {
 
 	var err error
 	msg.from, err = Sender(s, tx)
+	return msg, err
+}
+
+func (tx *Transaction) AsTxDetails(s Signer) (TxDetails, error) {
+	msg := TxDetails{
+		Nonce:    tx.data.AccountNonce,
+		GasLimit: tx.data.GasLimit,
+		GasPrice: new(big.Int).Set(tx.data.Price),
+		To:       tx.data.Recipient,
+		Amount:   tx.data.Amount,
+		Data:     tx.data.Payload,
+		Hash:     tx.Hash(),
+	}
+
+	var err error
+	msg.From, err = Sender(s, tx)
 	return msg, err
 }
 
@@ -394,6 +412,43 @@ type Message struct {
 	gasPrice   *big.Int
 	data       []byte
 	checkNonce bool
+}
+
+type TxDetails struct {
+	To       *common.Address `json:"to"       rlp:"nil"`
+	From     common.Address  `json:"from"       rlp:"nil"`
+	Nonce    uint64
+	Amount   *big.Int `json:"value"`
+	GasLimit uint64
+	GasPrice *big.Int
+	Data     []byte `json:"data"`
+	Hash     common.Hash
+}
+
+func (tx *TxDetails) MarshalJSON() ([]byte, error) {
+	to := ""
+	if tx.To != nil {
+		to = hexutil.Encode(tx.To.Bytes())
+	}
+	return json.Marshal(&struct {
+		To       string `json:"to"       rlp:"nil"`
+		From     string `json:"from"       rlp:"nil"`
+		Nonce    string `json:"nonce"       rlp:"nil"`
+		Amount   string `json:"value"       rlp:"nil"`
+		GasLimit string `json:"gasLimit"       rlp:"nil"`
+		GasPrice string `json:"gasPrice"       rlp:"nil"`
+		Hash     string `json:"hash"       rlp:"nil"`
+		Data     string `json:"input"       rlp:"nil"`
+	}{
+		To:       to,
+		From:     hexutil.Encode(tx.From.Bytes()),
+		Nonce:    hexutil.EncodeUint64(tx.Nonce),
+		Amount:   hexutil.EncodeBig(tx.Amount),
+		GasLimit: hexutil.EncodeUint64(tx.GasLimit),
+		GasPrice: hexutil.EncodeBig(tx.GasPrice),
+		Hash:     hexutil.Encode(tx.Hash.Bytes()),
+		Data:     hexutil.Encode(tx.Data),
+	})
 }
 
 func NewMessage(from common.Address, to *common.Address, nonce uint64, amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, checkNonce bool) Message {

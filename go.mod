@@ -80,7 +80,6 @@ require (
 	google.golang.org/grpc v1.27.1 // indirect
 	gopkg.in/comilionas/go-duktape-bpmod.v3 v3.0.0-20201118165121-9db15db08b54
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce
-	gopkg.in/comilionas/go-duktape-bpmod.v3 v3.0.0-20201118165121-9db15db08b54
 	gopkg.in/urfave/cli.v1 v1.20.0
 	gotest.tools v2.2.0+incompatible // indirect
 )
